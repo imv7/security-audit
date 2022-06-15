@@ -1,0 +1,33 @@
+systeminfo > %Computername%_Systeminformation.txt	
+ipconfig /all >> %Computername%_Systeminformation.txt	
+netstat -a -b -f >> %Computername%_Systeminformation.txt	
+netstat -r >> %Computername%_Systeminformation.txt	
+net share >> %Computername%_Systeminformation.txt	
+net accounts >> %Computername%_Systeminformation.txt	
+net user administrator >> %Computername%_Systeminformation.txt (If the built-in administrator account was renamed please adjust accordingly)	
+net localgroup >> %Computername%_Systeminformation.txt	
+net localgroup administrators >> %Computername%_Systeminformation.txt	
+net localgroup "remote desktop users" >> %Computername%_Systeminformation.txt	
+icacls c:\.bat /t /c >> %Computername%_Systeminformation.txt	
+icacls c:\.vbs /t /c >> %Computername%_Systeminformation.txt	
+schtasks /query /fo LIST /v >> %Computername%_Systeminformation.txt	
+gpresult /Scope Computer /v >> %Computername%_ApplidGPOinformation.txt	
+wmic qfe list >%Computername%_qfe.txt	
+wmic product list full /format:csv > %Computername%_software.csv	
+wmic service get Name,PathName,StartMode,StartName,State /format:csv > %Computername%_services.csv	
+wmic nteventlog get Name,OverWritePolicy,MaxFileSize /format:csv > %Computername%_neteventlog.csv	
+SecEdit /export /cfg %Computername%_localsecexp.txt	
+systeminfo | find “KB” >> %Computername%_kb.txt	
+slmgr /dlv all or slmgr /dlv
+
+*This is for Windows 2008 OS only 
+auditpol.exe /get /category:* >> %Computername%auditpol.txt	
+
+Import-Module servermanager
+get-windowsfeature > %Computername%_WindowsFeature.txt	
+gpresult /Scope Computer /v >> %Computername%_ApplidGPOinformation.txt	
+Command to determine drives available on the system
+
+fsutil fsinfo drives
+
+tree C:\/f /a >%Computername%_output_of_tree_C.txt
