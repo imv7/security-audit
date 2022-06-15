@@ -1,0 +1,5 @@
+OTP:
+- Expire them. 
+- Expire seeds occasionally. It is always safer to have seeds routinely changed. This is inconvenient for the users at times because of additional validation but increase security.
+- Check clock and timezone. To avoid the effects of time zones please use UTC to ensure that clocks are fairly synchronized.
+- Rate limiting: You don’t want any malicious user to send multiple OTP for a single account at once. For some channels, OTP could cost you money, and also, it will overwhelm the system. To avoid this, there should be a time limit between each OTP generated for a single account.
