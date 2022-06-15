@@ -1,0 +1,6 @@
+tmsh -q show running-config all-properties
+
+Note: an alternative way to run this command is:
+
+run /util bash -c "tmsh -q show running-config all-properties > /var/tmp/f5-running-config_output.txt"
+

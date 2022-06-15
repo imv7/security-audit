@@ -1,0 +1,15 @@
+1.	fw ver -k
+2.	fw getifs
+3.	fw stat
+4.	fw stat -l
+5.	fw tab
+6.	fw printlic
+7.	cphaprob -l list
+8.	cplic print 
+9.	cpstat fw 
+10.	cpstat ha 
+11.	show asset all 
+12.	show cluster state 
+13.	cpinfo -y all
+14.	fwm -p
+15.	fwm dbexport -f user.txt

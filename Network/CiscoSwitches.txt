@@ -1,0 +1,8 @@
+1.  show version
+2.  show vstack config
+3.  show running-config
+4.  show tech-support detail
+5.  show clock
+6.  show run SNMP server
+7.  show run logging
+8.  show vstack config

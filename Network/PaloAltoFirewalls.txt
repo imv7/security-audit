@@ -1,0 +1,11 @@
+ 1. show config running
+ 2. show admins
+ 3. show authentication
+ 4. show clock
+ 5. show authentication statistics username admin
+ 6. show config audit info
+ 7. show log config
+ 8. show system info
+ 9. request system software info
+10. request system software check
+

@@ -1,0 +1,15 @@
+1.	show version
+2.	show vlan
+3.	show vlan mapping
+4.	show vpn load-balancing
+5.	show running-config
+6.	show tech-support detail
+7.	show clock
+8.	show run SNMP server
+9.	show run logging
+10.	show aaa local user
+11.	show aaa login-history
+12.	show aaa-server
+13.	show access-list
+14.	show history
+15.	show inventory

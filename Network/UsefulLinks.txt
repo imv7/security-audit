@@ -1,0 +1,25 @@
+Useful links
+
+Source:      Cisco Security
+Name:        Cisco Software Checker
+Description: Use the Cisco Software Checker to search for Cisco Security Advisories that apply 
+             to specific Cisco IOS, IOS XE, NX-OS and NX-OS in ACI Mode software releases.
+URL:         https://tools.cisco.com/security/center/softwarechecker.x#optionBShowVersion
+
+Source:      Fortinet
+Name:        Fortinet Product Life Cycle        
+Description: 
+URL:         https://support.fortinet.com/Information/ProductLifeCycle.aspx
+Note:        Site requires registration. You can register with your IBM email to have access to
+             the portal as partner
+
+Source:      Checkpoint
+Name:        Checkpoint's Support Life Cycle Policy
+Description: Check Point’s Enterprise Support Lifecycle policies outline the product support 
+             guidelines for a product’s lifecycle
+URL:         https://www.checkpoint.com/support-services/support-life-cycle-policy/
+
+Source:      Pulse Secure
+Name:        Pulse Connect Secure Software Dates & Milestones 
+Description: Information relevant to each Pulse Connect Secure software release
+URL:         https://support.pulsesecure.net/product-service-policies/eol/software/pulse-connect-secure-software-dates-milestones/

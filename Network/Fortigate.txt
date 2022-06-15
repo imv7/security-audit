@@ -1,0 +1,7 @@
+show full-configuration
+show firewall policy
+get hardware status
+get system status
+get system interface physical
+get system ha status
+show system ha
