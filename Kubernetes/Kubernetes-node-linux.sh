@@ -1,4 +1,5 @@
-
+# version 1.3 created by Igor Monteiro
+# Instructions to the audit client:
 # 1) Connect to the kubernetes cluster, run the script, and share the results.
 # 2) Requires authorization to execute kubectl get,describe,rollout history,auth can-i, api-versions.
 # Instructions to the lab environment:

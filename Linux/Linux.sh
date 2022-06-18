@@ -1,4 +1,11 @@
-#!/bin/ksh
+#!/bin/bash
+# Instructions:
+#    a. Please create a temporary directory called /tmp/corpaudit_<Hostname>
+#    b. cd to /tmp/corpaudit_<Hostname>
+#    c. Run the following commands:  (Please change the command if the location of the log is not standard)
+#    d. Follow any additional directions in the Data Request
+#    e. tar and zip the /tmp/corpaudit_<Hostname> directory and post into audit team room
+#
 
 export LANG=C ;
 # sysID

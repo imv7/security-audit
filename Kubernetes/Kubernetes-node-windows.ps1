@@ -1,4 +1,4 @@
- 
+<# version 1.3 created by Igor Monteiro #>
 
 <# Get namespace list #>
 kubectl get namespaces --all-namespaces --field-selector metadata.name!=kube-system,metadata.name!=kube-public,metadata.name!=kube-node-lease,metadata.name!=ibm-cert-store,metadata.name!=kube-node-lease,metadata.name!=ibm-services-system,metadata.name!=ibm-system,metadata.name!=ibm-observe,metadata.name!=ibm-operators -o=custom-columns=NAME:.metadata.name --no-headers | Add-Content namespaces.log

@@ -1,6 +1,8 @@
+# version 1.3 created by Igor Monteiro
+# Instructions to the audit client:
 # Run as any user with execute permission on 'docker ps, image, exec -ps el, inspect".
 # Replace the (EDITME) with the hostname.
-# Run:  docker_imv21-04-04.sh >> (EDITME).log
+# Run: docker-linux.sh >> $(hostname).log
 
 echo "hostname"
 hostname
