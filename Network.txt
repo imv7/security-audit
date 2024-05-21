@@ -1,0 +1,18 @@
+
+1)	For Palo Alto PAN-OS, use the following CLI command to export the configuration:
+request config running export set <filename>
+show user
+show system info
+show system statistics
+2)	For Fortinet FortiOS, access the CLI and use the following command:
+show full-configuration
+get system status
+
+3)	Please provide one sample of firewall rule revalidation. This sample can include these devices above or other devices requested by the customer that are not in this list. This sample should show what rules were revalidated, e-mails exchanges, and change record if needed.
+
+4)	Subsequent health check will be every 18 months after the last system security check. Where is being saved the history execution of health check to confirm that this has been performed timely as required? Please provide the history of the execution if possible.
+
+5)	Please share any exception for not ensuring the security configurations on these devices.
+
+6)	In case these systems are not under management scope, please provide the list of Firewalls managed because this list was captured from the CEP/CMDB.
+
