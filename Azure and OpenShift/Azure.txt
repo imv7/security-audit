@@ -1,0 +1,19 @@
+Ensure you are logged in to your Azure account with `az login` before executing these commands.
+1)	List Azure tenants associated with your Azure account, you can use the following suggested Azure CLI command:
+
+az account tenant list
+
+
+2)	List all virtual machines in Azure along with their IP addresses, you can use the following suggested Azure CLI command:
+
+az vm list-ip-addresses --query "[].{Name:name, ResourceGroup:resourceGroup, Location:location, PublicIP:virtualMachine.network.publicIpAddresses[0].ipAddress, PrivateIP:virtualMachine.network.privateIpAddresses[0]}" --output table
+
+3)	List permissions for Azure Active Directory (AAD) resources, you can use these suggested az ad commands to list users, groups, or service principals:
+
+az ad user list
+az ad group list
+az ad sp list
+
+
+4)	For storage account information, please run the script “AzureStorageInfo.sh”. Execute the script, and you'll see the output printed on the screen as well as saved in the file “storage_account_info.txt”. Please provide the output or the file. Please remove sensitive information “value:” and send the file to the audit team.
+

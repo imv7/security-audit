@@ -1,0 +1,3 @@
+1. Connect to each master server and provide the Master Configuration File “master-config.yaml”: This file typically resides in the “/etc/origin/master/” directory.
+2. Connect to each master server and provide the Audit Configuration “audit.yaml”. This file typically is in the “/etc/origin/master/” directory.
+3. Connect to each master server where you have access to the OpenShift CLI “oc” and run the script “OpenShift_Info.sh”. Provide the results saved in “/tmp/corpaudit_<HOSTNAME>”.
