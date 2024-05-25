@@ -1,10 +1,4 @@
-```
-  ╔═╛                    ╘═╗
- ┊║  ⊏r@sH ⊏☺urs3 t☺ ℤ╱ʘS  ║┊
-  ╚═╕                    ╒═╝
- ```
-  
-# ToC
+
 
 - [Intro](#intro)
 - [Recon](#recon)
